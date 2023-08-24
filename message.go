@@ -4,9 +4,9 @@ import "net/rpc"
 
 type Message struct {
 	// 提案编号
-	Number int
+	ProposalNumber int
 	// 提案值
-	Value interface{}
+	ProposalValue interface{}
 	// 发送者 ID
 	From int
 	// 接收者 ID
@@ -14,9 +14,9 @@ type Message struct {
 }
 
 type Reply struct {
-	OK     bool
-	Number int
-	Value  interface{}
+	OK             bool
+	ProposalNumber int
+	ProposalValue  interface{}
 }
 
 func call(address string, name string, arguments interface{}, reply interface{}) error {

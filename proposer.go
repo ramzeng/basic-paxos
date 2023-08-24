@@ -14,19 +14,19 @@ type Proposer struct {
 	acceptors []int
 }
 
-func (p *Proposer) Propose(v interface{}) interface{} {
+func (p *Proposer) Propose(value interface{}) interface{} {
 	p.round++
 	p.number = p.proposalNumber()
 
 	// Prepare 阶段
-	prepareCount := 0
-	maxNumber := 0
+	preparedAcceptorsCount := 0
+	maxProposerNumber := 0
 
 	for _, acceptor := range p.acceptors {
 		message := Message{
-			Number: p.number,
-			From:   p.id,
-			To:     acceptor,
+			ProposalNumber: p.number,
+			From:           p.id,
+			To:             acceptor,
 		}
 
 		reply := &Reply{}
@@ -41,44 +41,50 @@ func (p *Proposer) Propose(v interface{}) interface{} {
 		}
 
 		if reply.OK {
-			prepareCount++
+			preparedAcceptorsCount++
 			// 如果收到的提案编号比当前的大，就更新当前的提案编号和提案值
-			if reply.Number > maxNumber {
-				maxNumber = reply.Number
-				v = reply.Value
+			if reply.ProposalNumber > maxProposerNumber {
+				maxProposerNumber = reply.ProposalNumber
+				value = reply.ProposalValue
 			}
 		}
 
-		if prepareCount > len(p.acceptors)/2 {
+		if preparedAcceptorsCount > p.halfAcceptorsCount() {
 			break
 		}
 	}
 
 	// Accept 阶段
-	acceptCount := 0
-	if prepareCount > len(p.acceptors)/2 {
+	acceptedAcceptorsCount := 0
+
+	if preparedAcceptorsCount > p.halfAcceptorsCount() {
 		for _, acceptor := range p.acceptors {
 			message := Message{
-				Number: p.number,
-				Value:  v,
-				From:   p.id,
-				To:     acceptor,
+				ProposalNumber: p.number,
+				ProposalValue:  value,
+				From:           p.id,
+				To:             acceptor,
 			}
 
 			reply := &Reply{}
 
-			if err := call(fmt.Sprintf("127.0.0.1:%d", acceptor), "Acceptor.Accept", message, reply); err != nil {
+			if err := call(
+				fmt.Sprintf("127.0.0.1:%d", acceptor),
+				"Acceptor.Accept",
+				message,
+				reply,
+			); err != nil {
 				continue
 			}
 
 			if reply.OK {
-				acceptCount++
+				acceptedAcceptorsCount++
 			}
 		}
 	}
 
-	if acceptCount > len(p.acceptors)/2 {
-		return v
+	if acceptedAcceptorsCount > p.halfAcceptorsCount() {
+		return value
 	}
 
 	return nil
@@ -87,4 +93,8 @@ func (p *Proposer) Propose(v interface{}) interface{} {
 func (p *Proposer) proposalNumber() int {
 	// 提案编号 = (轮次,节点 ID)
 	return p.round<<16 | p.id
+}
+
+func (p *Proposer) halfAcceptorsCount() int {
+	return len(p.acceptors) / 2
 }

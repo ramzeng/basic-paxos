@@ -11,15 +11,15 @@ type Learner struct {
 	// 节点 ID
 	id int
 	// 已接受的提案
-	acceptedMessage map[int]Message
+	acceptedMessages map[int]Message
 }
 
 func (l *Learner) Learn(message *Message, reply *Reply) error {
-	m := l.acceptedMessage[message.From]
+	m := l.acceptedMessages[message.From]
 
 	// 如果提案的编号大于已接受的提案编号，则接受该提案
-	if m.Number < message.Number {
-		l.acceptedMessage[message.From] = *message
+	if m.ProposalNumber < message.ProposalNumber {
+		l.acceptedMessages[message.From] = *message
 		reply.OK = true
 	} else {
 		reply.OK = false
@@ -29,20 +29,20 @@ func (l *Learner) Learn(message *Message, reply *Reply) error {
 }
 
 func (l *Learner) Chosen() interface{} {
-	acceptedCounts := make(map[int]int)
+	acceptorsCount := make(map[int]int)
 	acceptedMessages := make(map[int]Message)
 
-	for _, message := range l.acceptedMessage {
+	for _, message := range l.acceptedMessages {
 		// 如果提案的编号不为 0，则接受该提案
-		if message.Number != 0 {
-			acceptedCounts[message.Number]++
-			acceptedMessages[message.Number] = message
+		if message.ProposalNumber != 0 {
+			acceptorsCount[message.ProposalNumber]++
+			acceptedMessages[message.ProposalNumber] = message
 		}
 	}
 
-	for n, count := range acceptedCounts {
-		if count > len(l.acceptedMessage)/2 {
-			return acceptedMessages[n].Value
+	for proposalNumber, count := range acceptorsCount {
+		if count > l.halfAcceptedMessagesCount() {
+			return acceptedMessages[proposalNumber].ProposalValue
 		}
 	}
 
@@ -79,14 +79,18 @@ func (l *Learner) Close() {
 	_ = l.listener.Close()
 }
 
+func (l *Learner) halfAcceptedMessagesCount() int {
+	return len(l.acceptedMessages) / 2
+}
+
 func NewLearner(id int, acceptorIds []int) *Learner {
 	learner := &Learner{
-		id:              id,
-		acceptedMessage: make(map[int]Message),
+		id:               id,
+		acceptedMessages: make(map[int]Message),
 	}
 
 	for _, acceptorId := range acceptorIds {
-		learner.acceptedMessage[acceptorId] = Message{}
+		learner.acceptedMessages[acceptorId] = Message{}
 	}
 
 	learner.Serve(id)

@@ -12,23 +12,23 @@ type Acceptor struct {
 	// 节点 ID
 	id int
 	// 承诺的提案编号，如果为 0，则表示没有收到过任何 Prepare 消息
-	minProposal int
+	proposalProposal int
 	// 已接受的提案编号，如果为 0，表示没有接受任何提案
-	acceptedNumber int
+	acceptedProposalNumber int
 	// 已接受的提案值
-	acceptedValue interface{}
+	acceptedProposalValue interface{}
 	// 学习者 ID 列表
 	learners []int
 }
 
 func (a *Acceptor) Prepare(message *Message, reply *Reply) error {
 	// 如果提案编号大于当前承诺的提案编号，则承诺提案编号
-	if message.Number > a.minProposal {
-		a.minProposal = message.Number
+	if message.ProposalNumber > a.proposalProposal {
+		a.proposalProposal = message.ProposalNumber
 
 		// 返回已接受的提案编号和提案值
-		reply.Number = a.acceptedNumber
-		reply.Value = a.acceptedValue
+		reply.ProposalNumber = a.acceptedProposalNumber
+		reply.ProposalValue = a.acceptedProposalValue
 		reply.OK = true
 	} else {
 		// 否则，拒绝提案
@@ -40,12 +40,12 @@ func (a *Acceptor) Prepare(message *Message, reply *Reply) error {
 
 func (a *Acceptor) Accept(message *Message, reply *Reply) error {
 	// 如果提案编号大于等于当前承诺的提案编号，则接受提案
-	if message.Number >= a.minProposal {
-		a.minProposal = message.Number
+	if message.ProposalNumber >= a.proposalProposal {
+		a.proposalProposal = message.ProposalNumber
 
 		// 记录已接受的提案编号和提案值
-		a.acceptedNumber = message.Number
-		a.acceptedValue = message.Value
+		a.acceptedProposalNumber = message.ProposalNumber
+		a.acceptedProposalValue = message.ProposalValue
 
 		reply.OK = true
 
